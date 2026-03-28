@@ -194,6 +194,7 @@ def merchant_revenue(merchant_id: int, db: Session = Depends(get_db)):
 
     return {
         "merchant": merchant.name,
+        "phone": merchant.phone,
         "revenue_summary": {
             "total_transactions": count,
             "total_gross_ngn": total_gross,
@@ -251,3 +252,26 @@ def merchant_credit_profile(merchant_id: int, db: Session = Depends(get_db)):
             )
         }
     }
+
+@app.get("/merchants/{merchant_id}/workers")
+def get_merchant_workers(merchant_id: int, db: Session = Depends(get_db)):
+    workers = db.query(Worker).filter(Worker.merchant_id == merchant_id).all()
+    result = []
+    for w in workers:
+        payments = db.query(WagePayment).filter(
+            WagePayment.worker_id == w.id,
+            WagePayment.status == "success"
+        ).all()
+        result.append({
+            "worker_id": w.id,
+            "worker": w.name,
+            "phone": w.phone,
+            "income_record": {
+                "weekly_wage_ngn": w.weekly_wage,
+                "total_payments": len(payments),
+                "total_received_ngn": sum(p.amount for p in payments),
+                "consistency_score": "High" if len(payments) >= 4 else "Building"
+            }
+        })
+    return result
+
